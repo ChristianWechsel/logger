@@ -1,3 +1,2 @@
-console.log("Hello World!");
-
-export { add } from "./math/add.js";
+export type { Logger } from "./interfaces/logger.js";
+export { ConsoleLogger } from "./logging/console-logger.js";
