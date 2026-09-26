@@ -1,6 +1,7 @@
-import { mkdir, readFile, rm } from "fs/promises";
+import { mkdir, rm } from "fs/promises";
 import { resolve } from "path";
 import { FileLogger } from "../logging/file-logger/file-logger.js";
+import { FileReader } from "./utils/file-reader.js";
 
 describe("FileLogger Integration Tests", () => {
   const pathTestFolder = resolve(process.cwd(), "tmp-test");
@@ -29,19 +30,35 @@ describe("FileLogger Integration Tests", () => {
 
     logger.info("application started");
     logger.error("connection failed", "DatabaseClient");
-    console.debug("finished writing logs");
 
     await logger.close();
-    console.debug("stream closed");
-    const fileContent = await readFile(logFilePath, "utf-8");
-    const lines = fileContent.trim().split("\n");
 
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatch(
-      /^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}\.\d{3} \[integration-app\] info: application started$/,
-    );
-    expect(lines[1]).toMatch(
-      /^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}\.\d{3} \[integration-app\] \[DatabaseClient\] error: connection failed$/,
-    );
+    await new Promise<void>((resolve, reject) => {
+      const actual: string[] = [];
+
+      new FileReader(logFilePath, {
+        onData: (chunk) => {
+          actual.push(chunk);
+        },
+        onEnd: () => {
+          try {
+            expect(actual).toHaveLength(2);
+            expect(actual[0]).toMatch(
+              /^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}\.\d{3} \[integration-app\] info: application started$/,
+            );
+            expect(actual[1]).toMatch(
+              /^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}\.\d{3} \[integration-app\] \[DatabaseClient\] error: connection failed$/,
+            );
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        },
+      });
+    });
   });
+
+  // test mit 1 Mio log entries => heantasten, um Rechner nicht zu sprengen oder Disk zu überlasten
+  // createReadFile, um die großen Log-Dateien effizient zu lesen
+  // soll testen, ob bursts von Logs korrekt in Datei geschreiben werden kann
 });
