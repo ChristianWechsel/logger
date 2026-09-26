@@ -1,7 +1,17 @@
 import { createReadStream, ReadStream } from "fs";
 import { createInterface, Interface } from "readline";
 
-export class FileReader {
+export const readLogFile = (filePath: string): Promise<string[]> => {
+  return new Promise((resolve) => {
+    const lines: string[] = [];
+    new FileReader(filePath, {
+      onData: (line) => lines.push(line),
+      onEnd: () => resolve(lines),
+    });
+  });
+};
+
+class FileReader {
   private readonly readStream: ReadStream;
   private readonly lineReader: Interface;
 

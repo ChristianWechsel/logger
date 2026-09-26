@@ -1,15 +1,17 @@
 import { mkdir, rm } from "fs/promises";
 import { resolve } from "path";
 import { FileLogger } from "../logging/file-logger/file-logger.js";
-import { FileReader } from "./utils/file-reader.js";
+import { FileLoggerIntegrationTestdata } from "./file-logger.testdata.js";
+import { expectLogLines } from "./utils/expect-log-lines.js";
+import { readLogFile } from "./utils/read-log-file.js";
 
 describe("FileLogger Integration Tests", () => {
   const pathTestFolder = resolve(process.cwd(), "tmp-test");
-  const logFilePath = resolve(pathTestFolder, "app.log");
+  const appName = "integration-app";
+  const testdata = new FileLoggerIntegrationTestdata();
 
   beforeAll(async () => {
     try {
-      console.debug(`Create test folder at ${pathTestFolder}`);
       await mkdir(pathTestFolder, { recursive: true });
     } catch (error) {
       console.error(`${error}`);
@@ -18,7 +20,6 @@ describe("FileLogger Integration Tests", () => {
 
   afterAll(async () => {
     try {
-      console.debug(`Delete test folder at ${pathTestFolder}`);
       await rm(pathTestFolder, { recursive: true });
     } catch (error) {
       console.error(`${error}`);
@@ -26,39 +27,37 @@ describe("FileLogger Integration Tests", () => {
   });
 
   it("should write formatted log entries to a file on disk", async () => {
-    const logger = new FileLogger("integration-app", logFilePath);
+    const logFilePath = resolve(pathTestFolder, "app.log");
+    const logger = new FileLogger(appName, logFilePath);
+    const { logCalls, expectedPatterns } =
+      testdata.singleEntryScenario(appName);
 
-    logger.info("application started");
-    logger.error("connection failed", "DatabaseClient");
+    logCalls.forEach((call) => logger[call.level](call.message, call.context));
 
     await logger.close();
 
-    await new Promise<void>((resolve, reject) => {
-      const actual: string[] = [];
+    const actual = await readLogFile(logFilePath);
 
-      new FileReader(logFilePath, {
-        onData: (chunk) => {
-          actual.push(chunk);
-        },
-        onEnd: () => {
-          try {
-            expect(actual).toHaveLength(2);
-            expect(actual[0]).toMatch(
-              /^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}\.\d{3} \[integration-app\] info: application started$/,
-            );
-            expect(actual[1]).toMatch(
-              /^\d{4}-\d{2}-\d{2}:\d{2}:\d{2}:\d{2}\.\d{3} \[integration-app\] \[DatabaseClient\] error: connection failed$/,
-            );
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        },
-      });
-    });
+    expectLogLines(actual, expectedPatterns);
   });
 
-  // test mit 1 Mio log entries => heantasten, um Rechner nicht zu sprengen oder Disk zu überlasten
-  // createReadFile, um die großen Log-Dateien effizient zu lesen
-  // soll testen, ob bursts von Logs korrekt in Datei geschreiben werden kann
+  it("should correctly write a large burst of log entries without losing or corrupting lines", async () => {
+    const logFilePath = resolve(pathTestFolder, "burst.log");
+    const logger = new FileLogger(appName, logFilePath);
+    const entryCount = 250_000;
+    const { logCalls, expectedPatterns } = testdata.burstEntryScenario(
+      appName,
+      entryCount,
+    );
+
+    logCalls.forEach((call) => logger[call.level](call.message, call.context));
+
+    await logger.close();
+
+    const actual = await readLogFile(logFilePath);
+
+    expectLogLines(actual, expectedPatterns);
+  });
+
+  // rausfinden, ob highWaterMark bzw backpressure korrekt gehandhabt werden
 });
