@@ -1,3 +1,4 @@
+import { createWriteStream, WriteStream } from "fs";
 import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 
 // Mit Stream in File schreiben, um hochfrequente Logs sauber abfahren zu können
@@ -10,13 +11,14 @@ import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 
 export class FileLogger extends AbstractLogger {
   private readonly filePath: string;
+  private readonly writeStream: WriteStream;
 
   constructor(appName: string, filePath: string) {
     super(appName);
     if (!filePath || filePath.trim().length === 0) {
       throw new Error("FileLogger: filePath must be a non-empty string");
     }
-    this.filePath = filePath;
+    this.writeStream = createWriteStream(filePath, { flags: "a" });
   }
 
   info(message: string, context?: string): void {
@@ -36,8 +38,6 @@ export class FileLogger extends AbstractLogger {
   }
 
   private writeToFile(formattedMessage: string): void {
-    throw new Error(
-      `FileLogger.writeToFile: not implemented yet (target file: ${this.filePath}, message: ${formattedMessage})`,
-    );
+    this.writeStream.write(formattedMessage + "\n");
   }
 }
