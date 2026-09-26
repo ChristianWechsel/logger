@@ -1,4 +1,4 @@
-import { AbstractLogger } from "./abstract-logger.js";
+import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 
 export class FileLogger extends AbstractLogger {
   private readonly filePath: string;

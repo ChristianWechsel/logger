@@ -1,4 +1,4 @@
-import type { Logger } from "../interfaces/logger.js";
+import type { Logger } from "../../interfaces/logger.js";
 
 export abstract class AbstractLogger implements Logger {
   protected readonly appName: string;
