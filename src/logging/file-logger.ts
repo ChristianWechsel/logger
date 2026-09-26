@@ -1,0 +1,35 @@
+import { AbstractLogger } from "./abstract-logger.js";
+
+export class FileLogger extends AbstractLogger {
+  private readonly filePath: string;
+
+  constructor(appName: string, filePath: string) {
+    super(appName);
+    if (!filePath || filePath.trim().length === 0) {
+      throw new Error("FileLogger: filePath must be a non-empty string");
+    }
+    this.filePath = filePath;
+  }
+
+  info(message: string, context?: string): void {
+    this.writeToFile(this.formatMessage("info", message, context));
+  }
+
+  warn(message: string, context?: string): void {
+    this.writeToFile(this.formatMessage("warn", message, context));
+  }
+
+  error(message: string, context?: string): void {
+    this.writeToFile(this.formatMessage("error", message, context));
+  }
+
+  debug(message: string, context?: string): void {
+    this.writeToFile(this.formatMessage("debug", message, context));
+  }
+
+  private writeToFile(formattedMessage: string): void {
+    throw new Error(
+      `FileLogger.writeToFile: not implemented yet (target file: ${this.filePath}, message: ${formattedMessage})`,
+    );
+  }
+}
