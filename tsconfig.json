@@ -62,6 +62,6 @@
     "verbatimModuleSyntax": true /* Ensure that the emitted JavaScript preserves the module syntax exactly as TypeScript wrote it. */
   },
   "exclude": [
-    "node_modules",
+    "node_modules"
   ]
 }

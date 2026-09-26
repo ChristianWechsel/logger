@@ -1,8 +1,8 @@
-import { ConsoleLogger } from "../console-logger.js";
+import { ConsoleLogger } from "./console-logger.js";
 import {
   ConsoleLoggerTestdataFactory,
   FIXED_DATE,
-} from "../console-logger.testdata.js";
+} from "./console-logger.testdata.js";
 
 describe("ConsoleLogger", () => {
   beforeEach(() => {
