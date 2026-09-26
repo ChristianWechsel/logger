@@ -1,8 +1,13 @@
+export const FIXED_DATE = new Date("2024-01-15T10:30:45.123Z");
+
+const FIXED_TIMESTAMP = "2024-01-15:10:30:45.123";
+
 export type FileLoggerTestdata = {
   name: string;
   level: "info" | "warn" | "error" | "debug";
   message: string;
   context?: string;
+  expectedOutput: string;
 };
 
 export class FileLoggerTestdataFactory {
@@ -11,6 +16,7 @@ export class FileLoggerTestdataFactory {
       name: "info",
       level: "info",
       message: "starting application",
+      expectedOutput: `${FIXED_TIMESTAMP} [test-app] info: starting application\n`,
     };
   }
 
@@ -19,6 +25,7 @@ export class FileLoggerTestdataFactory {
       name: "warn",
       level: "warn",
       message: "low memory",
+      expectedOutput: `${FIXED_TIMESTAMP} [test-app] warn: low memory\n`,
     };
   }
 
@@ -27,6 +34,7 @@ export class FileLoggerTestdataFactory {
       name: "error",
       level: "error",
       message: "connection failed",
+      expectedOutput: `${FIXED_TIMESTAMP} [test-app] error: connection failed\n`,
     };
   }
 
@@ -36,6 +44,7 @@ export class FileLoggerTestdataFactory {
       level: "debug",
       message: "cache miss",
       context: "Repository",
+      expectedOutput: `${FIXED_TIMESTAMP} [test-app] [Repository] debug: cache miss\n`,
     };
   }
 }

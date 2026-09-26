@@ -1,7 +1,33 @@
+import { createWriteStream } from "fs";
 import { FileLogger } from "./file-logger.js";
-import { FileLoggerTestdataFactory } from "./file-logger.testdata.js";
+import {
+  FileLoggerTestdataFactory,
+  FIXED_DATE,
+} from "./file-logger.testdata.js";
+
+jest.mock("fs");
+
+const mockedCreateWriteStream = createWriteStream as jest.MockedFunction<
+  typeof createWriteStream
+>;
 
 describe("FileLogger", () => {
+  const writeMock = jest.fn();
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(FIXED_DATE);
+    writeMock.mockClear();
+    mockedCreateWriteStream.mockReturnValue({
+      write: writeMock,
+    } as unknown as ReturnType<typeof createWriteStream>);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
   describe("fail-fast validation", () => {
     it("throws when appName is empty", () => {
       expect(() => new FileLogger("", "app.log")).toThrow(
@@ -36,12 +62,12 @@ describe("FileLogger", () => {
       testData.warn(),
       testData.error(),
       testData.debug(),
-    ])("$name", ({ level, message, context }) => {
+    ])("$name", ({ level, message, context, expectedOutput }) => {
       const logger = new FileLogger("test-app", "app.log");
 
-      expect(() => logger[level](message, context)).toThrow(
-        "FileLogger.writeToFile: not implemented yet",
-      );
+      logger[level](message, context);
+
+      expect(writeMock).toHaveBeenCalledWith(expectedOutput);
     });
   });
 });
