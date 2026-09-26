@@ -10,7 +10,6 @@ import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 //    besser analysieren und verarbeiten zu können
 
 export class FileLogger extends AbstractLogger {
-  private readonly filePath: string;
   private readonly writeStream: WriteStream;
 
   constructor(appName: string, filePath: string) {
