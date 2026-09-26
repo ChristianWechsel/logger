@@ -54,6 +54,36 @@
 			"problemMatcher": [],
 			"label": "npm: test:int",
 			"detail": "Führt ausschließlich Integrationstests aus"
+		},
+		{
+			"label": "npm: build-test",
+			"type": "shell",
+			"command": "npm run build-test",
+			"group": "build"
+		},
+		{
+			"label": "npm: test:unit",
+			"type": "shell",
+			"command": "npm run test:unit",
+			"group": "test"
+		},
+		{
+			"label": "npm: test:int",
+			"type": "shell",
+			"command": "npm run test:int",
+			"group": "test"
+		},
+		{
+			"label": "npm: test:int",
+			"type": "shell",
+			"command": "npm run test:int",
+			"group": "test"
+		},
+		{
+			"label": "npm: test",
+			"type": "shell",
+			"command": "npm test",
+			"group": "test"
 		}
 	]
 }

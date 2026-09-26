@@ -39,4 +39,12 @@ export class FileLogger extends AbstractLogger {
   private writeToFile(formattedMessage: string): void {
     this.writeStream.write(formattedMessage + "\n");
   }
+
+  close(): Promise<void> {
+    return new Promise((resolve) => {
+      this.writeStream.end(() => {
+        resolve();
+      });
+    });
+  }
 }

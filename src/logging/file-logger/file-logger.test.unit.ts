@@ -1,3 +1,4 @@
+import { EventEmitter } from "events";
 import { createWriteStream } from "fs";
 import { FileLogger } from "./file-logger.js";
 import {
@@ -11,16 +12,26 @@ const mockedCreateWriteStream = createWriteStream as jest.MockedFunction<
   typeof createWriteStream
 >;
 
+function createMockWriteStream() {
+  const stream = new EventEmitter() as EventEmitter & {
+    write: jest.Mock;
+    end: jest.Mock;
+  };
+  stream.write = jest.fn();
+  stream.end = jest.fn((callback?: () => void) => callback?.());
+  return stream;
+}
+
 describe("FileLogger", () => {
-  const writeMock = jest.fn();
+  let mockWriteStream: ReturnType<typeof createMockWriteStream>;
 
   beforeEach(() => {
     jest.useFakeTimers();
     jest.setSystemTime(FIXED_DATE);
-    writeMock.mockClear();
-    mockedCreateWriteStream.mockReturnValue({
-      write: writeMock,
-    } as unknown as ReturnType<typeof createWriteStream>);
+    mockWriteStream = createMockWriteStream();
+    mockedCreateWriteStream.mockReturnValue(
+      mockWriteStream as unknown as ReturnType<typeof createWriteStream>,
+    );
   });
 
   afterEach(() => {
@@ -67,7 +78,26 @@ describe("FileLogger", () => {
 
       logger[level](message, context);
 
-      expect(writeMock).toHaveBeenCalledWith(expectedOutput);
+      expect(mockWriteStream.write).toHaveBeenCalledWith(expectedOutput);
+    });
+  });
+
+  describe("close", () => {
+    it("resolves when the underlying stream finishes successfully", async () => {
+      const logger = new FileLogger("test-app", "app.log");
+
+      await expect(logger.close()).resolves.toBeUndefined();
+      expect(mockWriteStream.end).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects when the underlying stream emits an error instead of finishing", async () => {
+      const streamError = new Error("write failed");
+      mockWriteStream.end.mockImplementation(() => {
+        mockWriteStream.emit("error", streamError);
+      });
+      const logger = new FileLogger("test-app", "app.log");
+
+      await expect(logger.close()).rejects.toThrow("write failed");
     });
   });
 });
