@@ -11,7 +11,6 @@ import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 export class FileLogger extends AbstractLogger {
   private readonly writeStream: WriteStream;
   private backPressureState: BooleanState;
-  private bufferWarning: string[];
 
   constructor(appName: string, filePath: string) {
     super(appName);
@@ -22,7 +21,6 @@ export class FileLogger extends AbstractLogger {
       flags: "a",
     });
     this.backPressureState = new BooleanState(true);
-    this.bufferWarning = [];
   }
 
   info(message: string, context?: string): void {
