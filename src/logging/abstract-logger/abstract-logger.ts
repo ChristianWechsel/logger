@@ -1,9 +1,11 @@
 import type { Logger } from "../../interfaces/logger.js";
 import type { LogEntry } from "../../types/log-entry.js";
 import type { LogLevel } from "../../types/log-level.js";
+import { TimeMonitoring } from "../../utils/time-monitoring.js";
 
 export abstract class AbstractLogger implements Logger {
   protected readonly appName: string;
+  protected readonly timeMonitoring: TimeMonitoring;
 
   constructor(appName: string) {
     if (!appName || appName.trim().length === 0) {
@@ -12,6 +14,7 @@ export abstract class AbstractLogger implements Logger {
       );
     }
     this.appName = appName;
+    this.timeMonitoring = new TimeMonitoring();
   }
 
   abstract info(message: string, context?: string): void;
@@ -56,6 +59,8 @@ export abstract class AbstractLogger implements Logger {
     message: string,
     context?: string,
   ): LogEntry {
-    return { timestamp: new Date(), level, message, context };
+    const timestamp = new Date();
+    this.timeMonitoring.newDate(timestamp);
+    return { timestamp, level, message, context };
   }
 }

@@ -1,87 +1,139 @@
-# create-gcp-ts
+# @christian-wechsel/logger
 
-## Node Project
+A lightweight, dependency-free TypeScript logging library for Node.js with a console logger and a file logger (daily rotation, JSON/text format, backpressure-safe writes).
 
-Use this template if you want to run your project directly in Node.js.
-
-> **Important – Replace Placeholders:**  
-> Before first use, adjust the placeholders in the following template files:
-
-- **`cloudbuild.yaml`**: `<SCOPE>`, `<REGION>`, `<PROJECT_ID>`, `<REPOSITORY_ID>`
-- **`LICENSE`**: `<YEAR>`, `<AUTHOR_OR_ORGANIZATION>`
-- **`package.json`**: Name, author, repository URLs, etc.
-- **`terraform.tfvars`** (or `terraform.tfvars.example`): GCP and GitHub values
-
-## Cloud Project Setup (One-Time)
+## Installation
 
 ```shell
-# Create a new project
-gcloud projects create <PROJECT_ID> --name="<PROJECT_NAME>"
-
-# List projects
-gcloud projects list
-
-# Check billing
-gcloud billing projects describe <PROJECT_ID>
-gcloud billing accounts list
-
-# Link billing account
-gcloud billing projects link <PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>
+npm install @christian-wechsel/logger
 ```
 
-Create `.npmrc` in the root folder:
+## Quick Start
 
-```npmrc
-@<SCOPE>:registry=https://<REGION>-npm.pkg.dev/<PROJECT_ID>/<REPOSITORY_ID>/
+```typescript
+import { ConsoleLogger, FileLogger } from "@christian-wechsel/logger";
+
+const consoleLogger = new ConsoleLogger("my-app");
+consoleLogger.info("Application started");
+consoleLogger.warn("Low memory", "SystemMonitor");
+consoleLogger.error("Connection failed", "DatabaseClient");
+
+const fileLogger = new FileLogger("my-app", {
+  pathFolder: "./logs",
+  extension: "log",
+});
+fileLogger.info("Application started");
+await fileLogger.close();
 ```
 
-## GitHub Connection (One-Time)
+Every log line is formatted as:
 
-- Google Cloud Console => CI/CD => Cloud Build => Repositories
-- 2nd gen => Create host connection
-  - Region: europe-west3 (Frankfurt)
-  - Name: <GITHUB_CONNECTION_NAME>
-  - Connect
-- Use existing GitHub installation
-  - Select your GitHub account / organization
-- GitHub Login => Settings => Applications => Installed GitHub Apps => Google Cloud Build => Configure => Repository access => Select repo
-- Back in Google Cloud => Select current project
-  - Connect repository
-  - Region: europe-west3 (Frankfurt)
-- 2nd gen => Link repository
-  - Connection: <GITHUB_CONNECTION_NAME>
-  - Repository: `<Repo>`
-
-## Infrastructure Provisioning
-
-```shell
-# Set main.tf variables
-
-# Find github_connection_name with
-gcloud builds connections list --region=<REGION> --project=<PROJECT_ID>
-# NAME e.g. my-github-connection
-
-# Find gcp_repository_name with
-gcloud builds repositories list --connection=<GITHUB_CONNECTION_NAME> --region=<REGION> --project=<PROJECT_ID>
-# NAME e.g. my-org-my-repo
+```text
+2024-01-15:10:30:45.123 [my-app] [DatabaseClient] error: Connection failed
 ```
 
-Fill in Terraform variables and create `terraform.tfvars`:
+## API
 
-```tfvars
-project_id             = "your-gcp-project-id"
-region                 = "europe-west3"
-github_connection_name = "your-github-connection"
-github_repo_name       = "your-repo-name"
-gcp_repository_name    = "your-cloudbuild-repo-resource-name"
-target_branch          = "main"
-npm_repository_id      = "shared-npm-repo"
+### `Logger` (interface)
+
+The common contract implemented by every logger:
+
+```typescript
+interface Logger {
+  info(message: string, context?: string): void;
+  warn(message: string, context?: string): void;
+  error(message: string, context?: string): void;
+  debug(message: string, context?: string): void;
+}
 ```
 
-`terraform.tfvars` contains local infrastructure metadata and must not be committed. The included `.gitignore` excludes it, `.npmrc`, Terraform state, plans, and overrides.
+`context` is optional and is rendered as `[Context]` right before the log level, e.g. for tagging the originating module/class.
 
-```shell
-# In the directory containing main.tf
-terraform init
-terraform apply
+### `ConsoleLogger`
+
+Writes formatted log lines to the standard console methods (`console.log`/`warn`/`error`/`debug`).
+
+```typescript
+import { ConsoleLogger } from "@christian-wechsel/logger";
+
+const logger = new ConsoleLogger("my-app");
+logger.debug("Cache miss", "Repository");
 ```
+
+Throws if `appName` is empty or blank.
+
+### `FileLogger`
+
+Writes formatted log lines to a file on disk.
+
+```typescript
+import { FileLogger } from "@christian-wechsel/logger";
+
+const logger = new FileLogger(
+  "my-app",
+  { pathFolder: "./logs", extension: "log" },
+  "json", // optional, defaults to "text"
+);
+
+logger.info("Application started");
+
+// Always close the logger during shutdown to flush and release the file handle.
+await logger.close();
+```
+
+**Constructor:** `new FileLogger(appName, file, format?)`
+
+| Parameter         | Type                                   | Description                                                        |
+| ----------------- | --------------------------------------- | -------------------------------------------------------------------- |
+| `appName`         | `string`                                 | Non-empty application identifier, included in every log line.       |
+| `file.pathFolder` | `string`                                 | Folder the log files are written to (must already exist).           |
+| `file.extension`  | `string`                                 | File extension appended to the generated file name (e.g. `"log"`). |
+| `format`          | `"text" \| "json"` (default `"text"`)   | Rendering format for each log entry.                                |
+
+Throws if `appName`, `file.pathFolder`, or `file.extension` is empty or blank.
+
+**Behavior:**
+
+- **File naming & daily rotation:** files are named `<appName>.<yyyy-mm-dd>.<extension>` (UTC date). The logger automatically rotates to a new file the moment the UTC day changes — no restart required.
+- **Format:** `"text"` produces the same human-readable line as `ConsoleLogger`; `"json"` produces one JSON object per line (JSON Lines / `.jsonl`-style), e.g. `{"timestamp":"...","appName":"my-app","level":"info","message":"..."}`.
+- **Backpressure handling:** if the underlying write stream can't keep up, the logger buffers a single warning ("Backpressure detected, write stream is full.") and **drops** the log lines that couldn't be written, instead of buffering unbounded amounts of data in memory. This is a deliberate trade-off favoring process stability (bounded memory) over completeness of logs — it targets low/medium-traffic workloads where sustained backpressure is rare. Once the stream drains, normal writing resumes and the buffered warning is flushed.
+- **`close()`** resolves once all pending writes have been flushed and the file handle closed. Always call it before your process exits.
+
+### `AbstractLogger`
+
+Base class for building custom loggers (e.g. to ship logs to an external service). Extend it and implement `info`/`warn`/`error`/`debug`; the protected helpers `createLogEntry`, `formatMessage`, and `formatMessageAsJson` are available for formatting.
+
+```typescript
+import { AbstractLogger, type LogEntry } from "@christian-wechsel/logger";
+
+class HttpLogger extends AbstractLogger {
+  info(message: string, context?: string): void {
+    this.send(this.createLogEntry("info", message, context));
+  }
+  warn(message: string, context?: string): void {
+    this.send(this.createLogEntry("warn", message, context));
+  }
+  error(message: string, context?: string): void {
+    this.send(this.createLogEntry("error", message, context));
+  }
+  debug(message: string, context?: string): void {
+    this.send(this.createLogEntry("debug", message, context));
+  }
+
+  private send(entry: LogEntry): void {
+    // e.g. fetch("https://logs.example.com", { method: "POST", body: this.formatMessageAsJson(entry) });
+  }
+}
+```
+
+### Types
+
+Exported for consumers building custom loggers or handling log data:
+
+| Type             | Shape                                                                     |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `LogLevel`        | `"info" \| "warn" \| "error" \| "debug"`                                    |
+| `LogEntry`        | `{ timestamp: Date; level: LogLevel; message: string; context?: string }`   |
+| `LogFormat`       | `"text" \| "json"`                                                          |
+| `FileLoggerFile`  | `{ pathFolder: string; extension: string }`                                 |
+

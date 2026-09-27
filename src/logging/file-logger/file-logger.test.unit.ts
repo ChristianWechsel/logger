@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 import { createWriteStream } from "fs";
+import { join } from "path";
 import { FileLogger } from "./file-logger.js";
 import {
   FileLoggerTestdataFactory,
@@ -41,27 +42,40 @@ describe("FileLogger", () => {
 
   describe("fail-fast validation", () => {
     it("throws when appName is empty", () => {
-      expect(() => new FileLogger("", "app.log")).toThrow(
-        "FileLogger: appName must be a non-empty string",
-      );
+      expect(
+        () => new FileLogger("", { pathFolder: ".", extension: "log" }),
+      ).toThrow("FileLogger: appName must be a non-empty string");
     });
 
     it("throws when appName is blank", () => {
-      expect(() => new FileLogger("   ", "app.log")).toThrow(
-        "FileLogger: appName must be a non-empty string",
-      );
+      expect(
+        () => new FileLogger("   ", { pathFolder: ".", extension: "log" }),
+      ).toThrow("FileLogger: appName must be a non-empty string");
     });
 
-    it("throws when filePath is empty", () => {
-      expect(() => new FileLogger("test-app", "")).toThrow(
-        "FileLogger: filePath must be a non-empty string",
-      );
+    it("throws when pathFolder is empty", () => {
+      expect(
+        () => new FileLogger("test-app", { pathFolder: "", extension: "log" }),
+      ).toThrow("FileLogger: file.pathFolder must be a non-empty string");
     });
 
-    it("throws when filePath is blank", () => {
-      expect(() => new FileLogger("test-app", "   ")).toThrow(
-        "FileLogger: filePath must be a non-empty string",
-      );
+    it("throws when pathFolder is blank", () => {
+      expect(
+        () =>
+          new FileLogger("test-app", { pathFolder: "   ", extension: "log" }),
+      ).toThrow("FileLogger: file.pathFolder must be a non-empty string");
+    });
+
+    it("throws when extension is empty", () => {
+      expect(
+        () => new FileLogger("test-app", { pathFolder: ".", extension: "" }),
+      ).toThrow("FileLogger: file.extension must be a non-empty string");
+    });
+
+    it("throws when extension is blank", () => {
+      expect(
+        () => new FileLogger("test-app", { pathFolder: ".", extension: "   " }),
+      ).toThrow("FileLogger: file.extension must be a non-empty string");
     });
   });
 
@@ -74,7 +88,10 @@ describe("FileLogger", () => {
       testData.error(),
       testData.debug(),
     ])("$name", ({ level, message, context, expectedOutput }) => {
-      const logger = new FileLogger("test-app", "app.log");
+      const logger = new FileLogger("test-app", {
+        pathFolder: ".",
+        extension: "log",
+      });
 
       logger[level](message, context);
 
@@ -88,7 +105,11 @@ describe("FileLogger", () => {
     it.each([testData.info_as_json(), testData.debug_as_json()])(
       "$name",
       ({ level, message, context, format, expectedOutput }) => {
-        const logger = new FileLogger("test-app", "app.log", format);
+        const logger = new FileLogger(
+          "test-app",
+          { pathFolder: ".", extension: "log" },
+          format,
+        );
 
         logger[level](message, context);
 
@@ -100,7 +121,10 @@ describe("FileLogger", () => {
   describe("backpressure handling", () => {
     it("buffers a warning while back-pressured and flushes it once the stream drains", () => {
       mockWriteStream.write.mockReturnValueOnce(false).mockReturnValue(true);
-      const logger = new FileLogger("test-app", "app.log");
+      const logger = new FileLogger("test-app", {
+        pathFolder: ".",
+        extension: "log",
+      });
 
       logger.info("first message");
       logger.info("second message");
@@ -119,7 +143,10 @@ describe("FileLogger", () => {
 
     it("resumes writing normally after the backpressure warning has been flushed", () => {
       mockWriteStream.write.mockReturnValueOnce(false).mockReturnValue(true);
-      const logger = new FileLogger("test-app", "app.log");
+      const logger = new FileLogger("test-app", {
+        pathFolder: ".",
+        extension: "log",
+      });
       logger.info("first message");
       logger.info("second message");
       mockWriteStream.emit("drain");
@@ -133,9 +160,82 @@ describe("FileLogger", () => {
     });
   });
 
+  describe("file naming", () => {
+    it("creates the write stream using appName.date.extension", () => {
+      new FileLogger("test-app", { pathFolder: "logs", extension: "log" });
+
+      expect(mockedCreateWriteStream).toHaveBeenCalledWith(
+        join("logs", "test-app.2024-01-15.log"),
+        { flags: "a" },
+      );
+    });
+  });
+
+  describe("day rotation", () => {
+    it("opens a new stream for the new day and closes the previous one", () => {
+      const logger = new FileLogger("test-app", {
+        pathFolder: "logs",
+        extension: "log",
+      });
+      const nextStream = createMockWriteStream();
+      mockedCreateWriteStream.mockReturnValueOnce(
+        nextStream as unknown as ReturnType<typeof createWriteStream>,
+      );
+
+      jest.setSystemTime(new Date("2024-01-16T00:00:00.000Z"));
+      logger.info("first message on the new day");
+
+      expect(mockWriteStream.end).toHaveBeenCalledTimes(1);
+      expect(mockedCreateWriteStream).toHaveBeenLastCalledWith(
+        join("logs", "test-app.2024-01-16.log"),
+        { flags: "a" },
+      );
+      expect(nextStream.write).toHaveBeenCalledWith(
+        expect.stringContaining("info: first message on the new day"),
+      );
+    });
+
+    it("does not rotate when logging again within the same day", () => {
+      const logger = new FileLogger("test-app", {
+        pathFolder: "logs",
+        extension: "log",
+      });
+      mockedCreateWriteStream.mockClear();
+
+      logger.info("still the same day");
+
+      expect(mockedCreateWriteStream).not.toHaveBeenCalled();
+    });
+
+    it("resets the backpressure state for the newly rotated stream", () => {
+      mockWriteStream.write.mockReturnValue(false);
+      const logger = new FileLogger("test-app", {
+        pathFolder: "logs",
+        extension: "log",
+      });
+      logger.info("first message");
+
+      const nextStream = createMockWriteStream();
+      nextStream.write.mockReturnValue(true);
+      mockedCreateWriteStream.mockReturnValueOnce(
+        nextStream as unknown as ReturnType<typeof createWriteStream>,
+      );
+
+      jest.setSystemTime(new Date("2024-01-16T00:00:00.000Z"));
+      logger.info("second message on new day");
+
+      expect(nextStream.write).toHaveBeenCalledWith(
+        expect.stringContaining("info: second message on new day"),
+      );
+    });
+  });
+
   describe("close", () => {
     it("resolves when the underlying stream finishes successfully", async () => {
-      const logger = new FileLogger("test-app", "app.log");
+      const logger = new FileLogger("test-app", {
+        pathFolder: ".",
+        extension: "log",
+      });
 
       await expect(logger.close()).resolves.toBeUndefined();
       expect(mockWriteStream.end).toHaveBeenCalledTimes(1);
@@ -146,7 +246,10 @@ describe("FileLogger", () => {
       mockWriteStream.end.mockImplementation(() => {
         mockWriteStream.emit("error", streamError);
       });
-      const logger = new FileLogger("test-app", "app.log");
+      const logger = new FileLogger("test-app", {
+        pathFolder: ".",
+        extension: "log",
+      });
 
       await expect(logger.close()).rejects.toThrow("write failed");
     });
