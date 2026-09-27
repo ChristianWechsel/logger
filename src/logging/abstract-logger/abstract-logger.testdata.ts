@@ -1,12 +1,15 @@
+import type { LogLevel } from "../../types/log-level.js";
+
 export const FIXED_DATE = new Date("2024-01-15T10:30:45.123Z");
 
-const FIXED_TIMESTAMP = "2024-01-15:10:30:45.123";
+export const FIXED_TIMESTAMP = "2024-01-15:10:30:45.123";
 
 export type FormatMessageTestdata = {
   name: string;
-  level: string;
+  level: LogLevel;
   message: string;
   context?: string;
+  timestamp: Date;
   expected: string;
 };
 
@@ -16,6 +19,7 @@ export class AbstractLoggerTestdataFactory {
       name: "without_context",
       level: "info",
       message: "starting application",
+      timestamp: FIXED_DATE,
       expected: `${FIXED_TIMESTAMP} [test-app] info: starting application`,
     };
   }
@@ -26,6 +30,7 @@ export class AbstractLoggerTestdataFactory {
       level: "warn",
       message: "low memory",
       context: "System",
+      timestamp: FIXED_DATE,
       expected: `${FIXED_TIMESTAMP} [test-app] [System] warn: low memory`,
     };
   }
@@ -35,6 +40,7 @@ export class AbstractLoggerTestdataFactory {
       name: "empty_message_is_sanitized",
       level: "error",
       message: "",
+      timestamp: FIXED_DATE,
       expected: `${FIXED_TIMESTAMP} [test-app] error: [empty message]`,
     };
   }
@@ -44,6 +50,7 @@ export class AbstractLoggerTestdataFactory {
       name: "blank_message_is_sanitized",
       level: "debug",
       message: "   ",
+      timestamp: FIXED_DATE,
       expected: `${FIXED_TIMESTAMP} [test-app] debug: [empty message]`,
     };
   }
@@ -53,6 +60,7 @@ export class AbstractLoggerTestdataFactory {
       name: "without_context_as_json",
       level: "info",
       message: "starting application",
+      timestamp: FIXED_DATE,
       expected: JSON.stringify({
         timestamp: FIXED_TIMESTAMP,
         appName: "test-app",
@@ -68,6 +76,7 @@ export class AbstractLoggerTestdataFactory {
       level: "warn",
       message: "low memory",
       context: "System",
+      timestamp: FIXED_DATE,
       expected: JSON.stringify({
         timestamp: FIXED_TIMESTAMP,
         appName: "test-app",
@@ -83,6 +92,7 @@ export class AbstractLoggerTestdataFactory {
       name: "empty_message_is_sanitized_as_json",
       level: "error",
       message: "",
+      timestamp: FIXED_DATE,
       expected: JSON.stringify({
         timestamp: FIXED_TIMESTAMP,
         appName: "test-app",

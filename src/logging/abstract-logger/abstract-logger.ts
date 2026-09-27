@@ -1,5 +1,6 @@
 import type { Logger } from "../../interfaces/logger.js";
 import type { LogEntry } from "../../types/log-entry.js";
+import type { LogLevel } from "../../types/log-level.js";
 
 export abstract class AbstractLogger implements Logger {
   protected readonly appName: string;
@@ -24,30 +25,37 @@ export abstract class AbstractLogger implements Logger {
       : message;
   }
 
-  protected formatTimestamp(): string {
-    const now = new Date();
-    const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-    const dd = String(now.getUTCDate()).padStart(2, "0");
-    const hh = String(now.getUTCHours()).padStart(2, "0");
-    const min = String(now.getUTCMinutes()).padStart(2, "0");
-    const ss = String(now.getUTCSeconds()).padStart(2, "0");
-    const ms = String(now.getUTCMilliseconds()).padStart(3, "0");
+  protected formatTimestamp(date: Date = new Date()): string {
+    const yyyy = date.getUTCFullYear();
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(date.getUTCDate()).padStart(2, "0");
+    const hh = String(date.getUTCHours()).padStart(2, "0");
+    const min = String(date.getUTCMinutes()).padStart(2, "0");
+    const ss = String(date.getUTCSeconds()).padStart(2, "0");
+    const ms = String(date.getUTCMilliseconds()).padStart(3, "0");
     return `${yyyy}-${mm}-${dd}:${hh}:${min}:${ss}.${ms}`;
   }
 
   protected formatMessage(entry: LogEntry): string {
     const contextPart = entry.context ? ` [${entry.context}]` : "";
-    return `${this.formatTimestamp()} [${this.appName}]${contextPart} ${entry.level}: ${this.sanitizeMessage(entry.message)}`;
+    return `${this.formatTimestamp(entry.timestamp)} [${this.appName}]${contextPart} ${entry.level}: ${this.sanitizeMessage(entry.message)}`;
   }
 
   protected formatMessageAsJson(entry: LogEntry): string {
     return JSON.stringify({
-      timestamp: this.formatTimestamp(),
+      timestamp: this.formatTimestamp(entry.timestamp),
       appName: this.appName,
       level: entry.level,
       message: this.sanitizeMessage(entry.message),
       ...(entry.context ? { context: entry.context } : {}),
     });
+  }
+
+  protected createLogEntry(
+    level: LogLevel,
+    message: string,
+    context?: string,
+  ): LogEntry {
+    return { timestamp: new Date(), level, message, context };
   }
 }

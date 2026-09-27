@@ -1,5 +1,8 @@
+import type { LogLevel } from "./log-level.js";
+
 export type LogEntry = {
-  level: string;
+  timestamp: Date;
+  level: LogLevel;
   message: string;
   context?: string;
 };

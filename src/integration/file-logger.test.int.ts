@@ -66,4 +66,28 @@ describe("FileLogger Integration Tests", () => {
       toleranceInPercente: 0.9,
     });
   });
+
+  it("backpressure scenario: writes a backpressure warning entry to the log", async () => {
+    const logFilePath = resolve(pathTestFolder, "backpressure-warning.log");
+    const logger = new FileLogger(appName, logFilePath);
+    const { logCalls } = testdata.burstEntryScenario(appName, 10000);
+
+    while (logCalls.length > 0) {
+      const burst = logCalls.splice(0, 1000);
+      burst.forEach((call) => logger[call.level](call.message, call.context));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 10);
+      });
+    }
+
+    await logger.close();
+
+    const actual = await readLogFile(logFilePath);
+    const backpressureWarningPattern =
+      testdata.backpressureWarningPattern(appName);
+
+    expect(actual.some((line) => backpressureWarningPattern.test(line))).toBe(
+      true,
+    );
+  });
 });

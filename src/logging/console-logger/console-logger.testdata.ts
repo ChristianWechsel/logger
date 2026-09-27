@@ -1,10 +1,12 @@
+import type { LogLevel } from "../../types/log-level.js";
+
 export const FIXED_DATE = new Date("2024-01-15T10:30:45.123Z");
 
 const FIXED_TIMESTAMP = "2024-01-15:10:30:45.123";
 
 export type ConsoleLoggerTestdata = {
   name: string;
-  level: "info" | "warn" | "error" | "debug";
+  level: LogLevel;
   message: string;
   context?: string;
   expectedConsoleMethod: "log" | "warn" | "error" | "debug";

@@ -47,6 +47,13 @@ export class FileLoggerIntegrationTestdata {
     };
   }
 
+  backpressureWarningPattern(appName: string): RegExp {
+    return this.buildExpectedPattern(appName, {
+      level: "warn",
+      message: "Backpressure detected, write stream is full.",
+    });
+  }
+
   private buildExpectedPattern(appName: string, call: LogCall): RegExp {
     const contextPart = call.context ? ` \\[${call.context}\\]` : "";
     return new RegExp(
