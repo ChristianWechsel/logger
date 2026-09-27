@@ -1,3 +1,4 @@
+import type { LogEntry } from "../../types/log-entry.js";
 import { AbstractLogger } from "./abstract-logger.js";
 import {
   AbstractLoggerTestdataFactory,
@@ -10,12 +11,12 @@ class TestLogger extends AbstractLogger {
   error(): void {}
   debug(): void {}
 
-  public callFormatMessage(
-    level: string,
-    message: string,
-    context?: string,
-  ): string {
-    return this.formatMessage(level, message, context);
+  public callFormatMessage(entry: LogEntry): string {
+    return this.formatMessage(entry);
+  }
+
+  public callFormatMessageAsJson(entry: LogEntry): string {
+    return this.formatMessageAsJson(entry);
   }
 
   public callSanitizeMessage(message: string): string {
@@ -90,7 +91,25 @@ describe("AbstractLogger", () => {
     ])("$name", ({ level, message, context, expected }) => {
       const logger = new TestLogger("test-app");
 
-      expect(logger.callFormatMessage(level, message, context)).toBe(expected);
+      expect(logger.callFormatMessage({ level, message, context })).toBe(
+        expected,
+      );
+    });
+  });
+
+  describe("formatMessageAsJson", () => {
+    const testData = new AbstractLoggerTestdataFactory();
+
+    it.each([
+      testData.without_context_as_json(),
+      testData.with_context_as_json(),
+      testData.empty_message_is_sanitized_as_json(),
+    ])("$name", ({ level, message, context, expected }) => {
+      const logger = new TestLogger("test-app");
+
+      expect(logger.callFormatMessageAsJson({ level, message, context })).toBe(
+        expected,
+      );
     });
   });
 });

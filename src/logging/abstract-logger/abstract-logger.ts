@@ -1,4 +1,5 @@
 import type { Logger } from "../../interfaces/logger.js";
+import type { LogEntry } from "../../types/log-entry.js";
 
 export abstract class AbstractLogger implements Logger {
   protected readonly appName: string;
@@ -35,12 +36,18 @@ export abstract class AbstractLogger implements Logger {
     return `${yyyy}-${mm}-${dd}:${hh}:${min}:${ss}.${ms}`;
   }
 
-  protected formatMessage(
-    level: string,
-    message: string,
-    context?: string,
-  ): string {
-    const contextPart = context ? ` [${context}]` : "";
-    return `${this.formatTimestamp()} [${this.appName}]${contextPart} ${level}: ${this.sanitizeMessage(message)}`;
+  protected formatMessage(entry: LogEntry): string {
+    const contextPart = entry.context ? ` [${entry.context}]` : "";
+    return `${this.formatTimestamp()} [${this.appName}]${contextPart} ${entry.level}: ${this.sanitizeMessage(entry.message)}`;
+  }
+
+  protected formatMessageAsJson(entry: LogEntry): string {
+    return JSON.stringify({
+      timestamp: this.formatTimestamp(),
+      appName: this.appName,
+      level: entry.level,
+      message: this.sanitizeMessage(entry.message),
+      ...(entry.context ? { context: entry.context } : {}),
+    });
   }
 }

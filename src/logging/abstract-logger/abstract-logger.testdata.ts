@@ -47,4 +47,48 @@ export class AbstractLoggerTestdataFactory {
       expected: `${FIXED_TIMESTAMP} [test-app] debug: [empty message]`,
     };
   }
+
+  without_context_as_json(): FormatMessageTestdata {
+    return {
+      name: "without_context_as_json",
+      level: "info",
+      message: "starting application",
+      expected: JSON.stringify({
+        timestamp: FIXED_TIMESTAMP,
+        appName: "test-app",
+        level: "info",
+        message: "starting application",
+      }),
+    };
+  }
+
+  with_context_as_json(): FormatMessageTestdata {
+    return {
+      name: "with_context_as_json",
+      level: "warn",
+      message: "low memory",
+      context: "System",
+      expected: JSON.stringify({
+        timestamp: FIXED_TIMESTAMP,
+        appName: "test-app",
+        level: "warn",
+        message: "low memory",
+        context: "System",
+      }),
+    };
+  }
+
+  empty_message_is_sanitized_as_json(): FormatMessageTestdata {
+    return {
+      name: "empty_message_is_sanitized_as_json",
+      level: "error",
+      message: "",
+      expected: JSON.stringify({
+        timestamp: FIXED_TIMESTAMP,
+        appName: "test-app",
+        level: "error",
+        message: "[empty message]",
+      }),
+    };
+  }
 }

@@ -1,4 +1,5 @@
 import { createWriteStream, WriteStream } from "fs";
+import type { LogEntry } from "../../types/log-entry.js";
 import { BooleanState } from "../../utils/boolean-state.js";
 import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 
@@ -8,11 +9,14 @@ import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 // Format frei gestalten, um als "console string" oder als JSON abzulegen, um es später
 //    besser analysieren und verarbeiten zu können
 
+export type LogFormat = "text" | "json";
+
 export class FileLogger extends AbstractLogger {
   private readonly writeStream: WriteStream;
+  private readonly format: LogFormat;
   private backPressureState: BooleanState;
 
-  constructor(appName: string, filePath: string) {
+  constructor(appName: string, filePath: string, format: LogFormat = "text") {
     super(appName);
     if (!filePath || filePath.trim().length === 0) {
       throw new Error("FileLogger: filePath must be a non-empty string");
@@ -20,23 +24,30 @@ export class FileLogger extends AbstractLogger {
     this.writeStream = createWriteStream(filePath, {
       flags: "a",
     });
+    this.format = format;
     this.backPressureState = new BooleanState(true);
   }
 
   info(message: string, context?: string): void {
-    this.writeToFile(this.formatMessage("info", message, context));
+    this.writeToFile(this.formatEntry({ level: "info", message, context }));
   }
 
   warn(message: string, context?: string): void {
-    this.writeToFile(this.formatMessage("warn", message, context));
+    this.writeToFile(this.formatEntry({ level: "warn", message, context }));
   }
 
   error(message: string, context?: string): void {
-    this.writeToFile(this.formatMessage("error", message, context));
+    this.writeToFile(this.formatEntry({ level: "error", message, context }));
   }
 
   debug(message: string, context?: string): void {
-    this.writeToFile(this.formatMessage("debug", message, context));
+    this.writeToFile(this.formatEntry({ level: "debug", message, context }));
+  }
+
+  private formatEntry(entry: LogEntry): string {
+    return this.format === "json"
+      ? this.formatMessageAsJson(entry)
+      : this.formatMessage(entry);
   }
 
   private writeToFile(formattedMessage: string): void {

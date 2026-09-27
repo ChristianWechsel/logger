@@ -2,18 +2,18 @@ import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 
 export class ConsoleLogger extends AbstractLogger {
   info(message: string, context?: string): void {
-    console.log(this.formatMessage("info", message, context));
+    console.log(this.formatMessage({ level: "info", message, context }));
   }
 
   warn(message: string, context?: string): void {
-    console.warn(this.formatMessage("warn", message, context));
+    console.warn(this.formatMessage({ level: "warn", message, context }));
   }
 
   error(message: string, context?: string): void {
-    console.error(this.formatMessage("error", message, context));
+    console.error(this.formatMessage({ level: "error", message, context }));
   }
 
   debug(message: string, context?: string): void {
-    console.debug(this.formatMessage("debug", message, context));
+    console.debug(this.formatMessage({ level: "debug", message, context }));
   }
 }

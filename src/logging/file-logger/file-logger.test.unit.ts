@@ -82,6 +82,21 @@ describe("FileLogger", () => {
     });
   });
 
+  describe("json format", () => {
+    const testData = new FileLoggerTestdataFactory();
+
+    it.each([testData.info_as_json(), testData.debug_as_json()])(
+      "$name",
+      ({ level, message, context, format, expectedOutput }) => {
+        const logger = new FileLogger("test-app", "app.log", format);
+
+        logger[level](message, context);
+
+        expect(mockWriteStream.write).toHaveBeenCalledWith(expectedOutput);
+      },
+    );
+  });
+
   describe("close", () => {
     it("resolves when the underlying stream finishes successfully", async () => {
       const logger = new FileLogger("test-app", "app.log");
