@@ -1,8 +1,7 @@
 import { createWriteStream, WriteStream } from "fs";
+import { BooleanState } from "../../utils/boolean-state.js";
 import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 
-// Mit Stream in File schreiben, um hochfrequente Logs sauber abfahren zu können
-// ggf mit worker thread implementieren, um Schreiboperationen auszulagern
 // FileRoation nach Datum implementieren => bei Tageswechsel
 // Diese Funktionen in eigene Klassen auslagern, um Wiederverwendbarkeit zu erreichen
 // Bei App Stop oder Absturz muss sichergestellt werden, dass alle Logs geschrieben werden
@@ -11,13 +10,19 @@ import { AbstractLogger } from "../abstract-logger/abstract-logger.js";
 
 export class FileLogger extends AbstractLogger {
   private readonly writeStream: WriteStream;
+  private backPressureState: BooleanState;
+  private bufferWarning: string[];
 
   constructor(appName: string, filePath: string) {
     super(appName);
     if (!filePath || filePath.trim().length === 0) {
       throw new Error("FileLogger: filePath must be a non-empty string");
     }
-    this.writeStream = createWriteStream(filePath, { flags: "a" });
+    this.writeStream = createWriteStream(filePath, {
+      flags: "a",
+    });
+    this.backPressureState = new BooleanState(true);
+    this.bufferWarning = [];
   }
 
   info(message: string, context?: string): void {
@@ -37,7 +42,21 @@ export class FileLogger extends AbstractLogger {
   }
 
   private writeToFile(formattedMessage: string): void {
-    this.writeStream.write(formattedMessage + "\n");
+    if (this.backPressureState.hasStateSwitchedTrueToFalse()) {
+      console.warn(
+        "Backpressure detected, write stream is full",
+        this.constructor.name,
+      );
+      this.backPressureState.resetHasSwitchedTrueToFalse();
+      this.writeStream.once("drain", () => {
+        this.backPressureState.updateStateIfChanged(true);
+        console.info(this.constructor.name);
+      });
+    }
+    if (this.backPressureState.getState()) {
+      const hasNoBackPressure = this.writeStream.write(formattedMessage + "\n");
+      this.backPressureState.updateStateIfChanged(hasNoBackPressure);
+    }
   }
 
   close(): Promise<void> {
