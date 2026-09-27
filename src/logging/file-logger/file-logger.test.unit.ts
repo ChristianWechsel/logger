@@ -97,6 +97,42 @@ describe("FileLogger", () => {
     );
   });
 
+  describe("backpressure handling", () => {
+    it("buffers a warning while back-pressured and flushes it once the stream drains", () => {
+      mockWriteStream.write.mockReturnValueOnce(false).mockReturnValue(true);
+      const logger = new FileLogger("test-app", "app.log");
+
+      logger.info("first message");
+      logger.info("second message");
+
+      expect(mockWriteStream.write).toHaveBeenCalledTimes(1);
+
+      mockWriteStream.emit("drain");
+
+      expect(mockWriteStream.write).toHaveBeenCalledTimes(2);
+      expect(mockWriteStream.write).toHaveBeenLastCalledWith(
+        expect.stringContaining(
+          "warn: Backpressure detected, write stream is full.",
+        ),
+      );
+    });
+
+    it("resumes writing normally after the backpressure warning has been flushed", () => {
+      mockWriteStream.write.mockReturnValueOnce(false).mockReturnValue(true);
+      const logger = new FileLogger("test-app", "app.log");
+      logger.info("first message");
+      logger.info("second message");
+      mockWriteStream.emit("drain");
+      mockWriteStream.write.mockClear();
+
+      logger.info("third message");
+
+      expect(mockWriteStream.write).toHaveBeenCalledWith(
+        expect.stringContaining("info: third message"),
+      );
+    });
+  });
+
   describe("close", () => {
     it("resolves when the underlying stream finishes successfully", async () => {
       const logger = new FileLogger("test-app", "app.log");
