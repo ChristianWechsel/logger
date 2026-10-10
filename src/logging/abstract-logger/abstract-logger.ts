@@ -39,7 +39,7 @@ export abstract class AbstractLogger implements Logger {
     return `${yyyy}-${mm}-${dd}:${hh}:${min}:${ss}.${ms}`;
   }
 
-  protected formatMessage(entry: LogEntry): string {
+  protected formatMessageAsText(entry: LogEntry): string {
     const contextPart = entry.context ? ` [${entry.context}]` : "";
     return `${this.formatTimestamp(entry.timestamp)} [${this.appName}]${contextPart} ${entry.level}: ${this.sanitizeMessage(entry.message)}`;
   }

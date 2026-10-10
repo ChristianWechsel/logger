@@ -124,7 +124,7 @@ export class FileLogger extends AbstractLogger {
   private formatEntry(entry: LogEntry): string {
     return this.format === "json"
       ? this.formatMessageAsJson(entry)
-      : this.formatMessage(entry);
+      : this.formatMessageAsText(entry);
   }
 
   private formatFileName(params: {

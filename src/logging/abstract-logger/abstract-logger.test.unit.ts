@@ -13,7 +13,7 @@ class TestLogger extends AbstractLogger {
   debug(): void {}
 
   public callFormatMessage(entry: LogEntry): string {
-    return this.formatMessage(entry);
+    return this.formatMessageAsText(entry);
   }
 
   public callFormatMessageAsJson(entry: LogEntry): string {
