@@ -242,7 +242,7 @@ describe("StorageLogger", () => {
     expect(actualBatches[1]).toHaveLength(1);
   });
 
-  it.only("callback onError", (done) => {
+  it("callback onError", (done) => {
     const storageLogger = new StorageLogger("appName", {
       upload: () => {
         return Promise.reject(new Error("Upload failed"));
