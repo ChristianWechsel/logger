@@ -43,7 +43,7 @@ export class StorageLogger extends AbstractLogger {
 
   close() {
     this.addCurrentLogsToQueueUpload();
-    return Promise.all(this.pendingUploads);
+    return Promise.all(this.pendingUploads).then(() => {});
   }
 
   private addLogEntry(logEntry: LogEntry): void {

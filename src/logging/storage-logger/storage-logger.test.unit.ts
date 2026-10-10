@@ -203,7 +203,7 @@ describe("StorageLogger", () => {
     storageLogger.error("error message", "context");
     storageLogger.debug("debug message", "context");
 
-    await expect(storageLogger.close()).resolves.toBeDefined();
+    await expect(storageLogger.close()).resolves.toBeUndefined();
   });
 
   it("should continue uploading after a batch upload fails", async () => {
@@ -235,7 +235,7 @@ describe("StorageLogger", () => {
     storageLogger.debug("4");
     storageLogger.debug("5");
 
-    await expect(storageLogger.close()).resolves.toBeDefined();
+    await expect(storageLogger.close()).resolves.toBeUndefined();
     expect(uploadCount).toBe(3);
     expect(actualBatches).toHaveLength(2);
     expect(actualBatches[0]).toHaveLength(2);

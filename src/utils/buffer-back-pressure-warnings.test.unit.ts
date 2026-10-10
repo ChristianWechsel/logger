@@ -7,6 +7,7 @@ function createMockLogger(): jest.Mocked<Logger> {
     warn: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
+    close: jest.fn(),
   };
 }
 

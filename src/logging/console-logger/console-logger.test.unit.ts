@@ -57,4 +57,12 @@ describe("ConsoleLogger", () => {
       },
     );
   });
+
+  describe("close", () => {
+    it("resolves without doing anything", async () => {
+      const logger = new ConsoleLogger("test-app");
+
+      await expect(logger.close()).resolves.toBeUndefined();
+    });
+  });
 });

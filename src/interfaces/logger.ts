@@ -3,4 +3,5 @@ export interface Logger {
   warn(message: string, context?: string): void;
   error(message: string, context?: string): void;
   debug(message: string, context?: string): void;
+  close(): Promise<void>;
 }

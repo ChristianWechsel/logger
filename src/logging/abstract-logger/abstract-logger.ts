@@ -21,6 +21,7 @@ export abstract class AbstractLogger implements Logger {
   abstract warn(message: string, context?: string): void;
   abstract error(message: string, context?: string): void;
   abstract debug(message: string, context?: string): void;
+  abstract close(): Promise<void>;
 
   protected sanitizeMessage(message: string): string {
     return !message || message.trim().length === 0

@@ -11,6 +11,7 @@ class TestLogger extends AbstractLogger {
   warn(): void {}
   error(): void {}
   debug(): void {}
+  async close(): Promise<void> {}
 
   public callFormatMessage(entry: LogEntry): string {
     return this.formatMessageAsText(entry);

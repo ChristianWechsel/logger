@@ -24,4 +24,6 @@ export class ConsoleLogger extends AbstractLogger {
       this.formatMessageAsText(this.createLogEntry("debug", message, context)),
     );
   }
+
+  async close(): Promise<void> {}
 }
