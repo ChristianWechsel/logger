@@ -126,15 +126,15 @@ describe("StorageLogger", () => {
       .then(() => {
         try {
           expect(actualBatches).toHaveLength(2);
-          expect(actualBatches[0]).toHaveLength(3);
-          expect(actualBatches[1]).toHaveLength(1);
+          expect(actualBatches[0]).toHaveLength(1);
+          expect(actualBatches[1]).toHaveLength(3);
           done();
         } catch (error) {
           done(error);
         }
       })
       .catch(done);
-  }, 10000);
+  });
 
   it("close consider not finished multiple uploads as they might take longer", (done) => {
     let counterUploads = 0;
@@ -180,20 +180,18 @@ describe("StorageLogger", () => {
       .then(() => {
         try {
           expect(actualBatches).toHaveLength(3);
-          expect(actualBatches[0]).toHaveLength(2);
+          expect(actualBatches[0]).toHaveLength(1);
           expect(actualBatches[1]).toHaveLength(2);
-          expect(actualBatches[2]).toHaveLength(1);
+          expect(actualBatches[2]).toHaveLength(2);
           done();
         } catch (error) {
           done(error);
         }
       })
       .catch(done);
-  }, 10000);
+  });
 
-  it.todo("upload thorws error");
-
-  it.only("should upload log entries on close", async () => {
+  it("should suppress upload errors on close", async () => {
     const storageLogger = new StorageLogger("appName", {
       upload: () => {
         return Promise.reject(new Error("Upload failed"));
@@ -205,6 +203,42 @@ describe("StorageLogger", () => {
     storageLogger.error("error message", "context");
     storageLogger.debug("debug message", "context");
 
-    await expect(storageLogger.close()).rejects.toThrow("Upload failed");
+    await expect(storageLogger.close()).resolves.toBeDefined();
+  });
+
+  it("should continue uploading after a batch upload fails", async () => {
+    let uploadCount = 0;
+    const actualBatches: LogEntry[][] = [];
+
+    const storageLogger = new StorageLogger(
+      "appName",
+      {
+        upload: (data) => {
+          uploadCount++;
+          if (uploadCount === 1) {
+            return Promise.reject(new Error("Upload failed"));
+          }
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              actualBatches.push(data);
+              resolve();
+            }, 10);
+          });
+        },
+      },
+      { batch: { threshold: 2 } },
+    );
+
+    storageLogger.info("1");
+    storageLogger.warn("2");
+    storageLogger.error("3");
+    storageLogger.debug("4");
+    storageLogger.debug("5");
+
+    await expect(storageLogger.close()).resolves.toBeDefined();
+    expect(uploadCount).toBe(3);
+    expect(actualBatches).toHaveLength(2);
+    expect(actualBatches[0]).toHaveLength(2);
+    expect(actualBatches[1]).toHaveLength(1);
   });
 });
