@@ -51,9 +51,11 @@ export class StorageLogger extends AbstractLogger {
     const next = this.queueUploads.shift();
     if (next) {
       const { uploadPromise, resolveUpload } = this.createUploadPromise();
-
       this.pendingUploads.add(uploadPromise);
-      this.storage.upload(next).then(resolveUpload);
+      this.storage.upload(next).then(() => {
+        resolveUpload();
+        this.pendingUploads.delete(uploadPromise);
+      });
     }
   }
 
