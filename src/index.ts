@@ -6,5 +6,9 @@ export {
   type FileLoggerFile,
   type LogFormat,
 } from "./logging/file-logger/file-logger.js";
+export {
+  StorageLogger,
+  type IStorage,
+} from "./logging/storage-logger/storage-logger.js";
 export type { LogEntry } from "./types/log-entry.js";
 export type { LogLevel } from "./types/log-level.js";

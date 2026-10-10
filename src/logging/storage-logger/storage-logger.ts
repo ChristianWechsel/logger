@@ -15,7 +15,7 @@ export class StorageLogger extends AbstractLogger {
     appName: string,
     private storage: IStorage,
     private options: { batch: { threshold: number } } = {
-      batch: { threshold: 50 },
+      batch: { threshold: 1000 },
     },
   ) {
     super(appName);
@@ -63,12 +63,10 @@ export class StorageLogger extends AbstractLogger {
         this.pendingUploads.add(uploadPromise);
         this.storage
           .upload(next)
-          .then(() => {
-            resolveUpload();
-            this.pendingUploads.delete(uploadPromise);
-          })
           .catch((err) => {
             this.errorCallback?.(err);
+          })
+          .finally(() => {
             resolveUpload();
             this.pendingUploads.delete(uploadPromise);
           });

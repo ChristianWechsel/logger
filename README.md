@@ -1,6 +1,6 @@
 # @christian-wechsel/logger
 
-A lightweight, dependency-free TypeScript logging library for Node.js with a console logger and a file logger (daily rotation, JSON/text format, backpressure-safe writes).
+A lightweight, dependency-free TypeScript logging library for Node.js with console, file, and storage loggers. The file logger supports daily rotation, JSON/text formats, and backpressure-safe writes.
 
 ## Installation
 
@@ -98,6 +98,56 @@ Throws if `appName`, `file.pathFolder`, or `file.extension` is empty or blank.
 - **Format:** `"text"` produces the same human-readable line as `ConsoleLogger`; `"json"` produces one JSON object per line (JSON Lines / `.jsonl`-style), e.g. `{"timestamp":"...","appName":"my-app","level":"info","message":"..."}`.
 - **Backpressure handling:** if the underlying write stream can't keep up, the logger buffers a single warning ("Backpressure detected, write stream is full.") and **drops** the log lines that couldn't be written, instead of buffering unbounded amounts of data in memory. This is a deliberate trade-off favoring process stability (bounded memory) over completeness of logs — it targets low/medium-traffic workloads where sustained backpressure is rare. Once the stream drains, normal writing resumes and the buffered warning is flushed.
 - **`close()`** resolves once all pending writes have been flushed and the file handle closed. Always call it before your process exits.
+
+### `StorageLogger`
+
+Uploads log entries in batches to a storage adapter provided by the application.
+
+```typescript
+import { StorageLogger } from "@christian-wechsel/logger";
+
+const storageLogger = new StorageLogger(
+  "my-app",
+  {
+    upload: async (entries) => {
+      const response = await fetch("https://logs.example.com", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(entries),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Log upload failed: ${response.status}`);
+      }
+    },
+  },
+  { batch: { threshold: 100 } },
+);
+
+storageLogger.onError((error) => {
+  console.error("Could not upload log batch", error);
+});
+
+storageLogger.info("Application started");
+storageLogger.warn("Low memory", "SystemMonitor");
+
+// Stop logging before closing so all entries are included in the final flush.
+await storageLogger.close();
+```
+
+**Constructor:** `new StorageLogger(appName, storage, options?)`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `appName` | `string` | Non-empty application identifier included in each log entry. |
+| `storage.upload` | `(entries: LogEntry[]) => Promise<void>` | Uploads a batch. Reject the promise when the upload fails. |
+| `options.batch.threshold` | `number` (default `1000`) | Number of entries that triggers a batch upload. |
+
+**Behavior:**
+
+- Entries are uploaded when the batch threshold is reached. `close()` uploads any remaining entries and waits for uploads already in progress.
+- Upload failures are suppressed so logging can continue. Register `onError(callback)` to receive upload errors; the callback is for notification and does not retry the failed batch.
+- Call `close()` after stopping new log calls, and await it before the process exits. The logger buffers batches in memory; it does not provide durable storage if the process terminates unexpectedly.
 
 ### `AbstractLogger`
 
