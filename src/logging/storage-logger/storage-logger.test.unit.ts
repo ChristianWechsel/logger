@@ -191,8 +191,20 @@ describe("StorageLogger", () => {
       .catch(done);
   }, 10000);
 
-  it.todo(
-    "intermittend bursts of logs, with calm periods where all uploads are done and then multiple pending uploads",
-  );
   it.todo("upload thorws error");
+
+  it.only("should upload log entries on close", async () => {
+    const storageLogger = new StorageLogger("appName", {
+      upload: () => {
+        return Promise.reject(new Error("Upload failed"));
+      },
+    });
+
+    storageLogger.info("info message", "context");
+    storageLogger.warn("warn message", "context");
+    storageLogger.error("error message", "context");
+    storageLogger.debug("debug message", "context");
+
+    await expect(storageLogger.close()).rejects.toThrow("Upload failed");
+  });
 });
