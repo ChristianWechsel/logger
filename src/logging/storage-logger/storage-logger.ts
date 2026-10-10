@@ -9,6 +9,7 @@ export class StorageLogger extends AbstractLogger {
   private logs: LogEntry[];
   private queueUploads: LogEntry[][];
   private pendingUploads: Set<Promise<void>>;
+  private errorCallback?: (err: any) => void;
 
   constructor(
     appName: string,
@@ -21,6 +22,10 @@ export class StorageLogger extends AbstractLogger {
     this.logs = [];
     this.queueUploads = [];
     this.pendingUploads = new Set<Promise<void>>();
+  }
+
+  onError(cb: (err: any) => void) {
+    this.errorCallback = cb;
   }
 
   info(message: string, context?: string): void {
@@ -62,7 +67,8 @@ export class StorageLogger extends AbstractLogger {
             resolveUpload();
             this.pendingUploads.delete(uploadPromise);
           })
-          .catch(() => {
+          .catch((err) => {
+            this.errorCallback?.(err);
             resolveUpload();
             this.pendingUploads.delete(uploadPromise);
           });

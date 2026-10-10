@@ -241,4 +241,29 @@ describe("StorageLogger", () => {
     expect(actualBatches[0]).toHaveLength(2);
     expect(actualBatches[1]).toHaveLength(1);
   });
+
+  it.only("callback onError", (done) => {
+    const storageLogger = new StorageLogger("appName", {
+      upload: () => {
+        return Promise.reject(new Error("Upload failed"));
+      },
+    });
+
+    storageLogger.onError((err) => {
+      try {
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toBe("Upload failed");
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    storageLogger.info("info message", "context");
+    storageLogger.warn("warn message", "context");
+    storageLogger.error("error message", "context");
+    storageLogger.debug("debug message", "context");
+
+    storageLogger.close();
+  });
 });
