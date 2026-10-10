@@ -8,7 +8,7 @@ export interface IStorage {
 export class StorageLogger extends AbstractLogger {
   private logs: LogEntry[];
   private queueUploads: LogEntry[][];
-  private listPendingUploads: Promise<void>[];
+  private pendingUploads: Set<Promise<void>>;
 
   constructor(
     appName: string,
@@ -20,7 +20,7 @@ export class StorageLogger extends AbstractLogger {
     super(appName);
     this.logs = [];
     this.queueUploads = [];
-    this.listPendingUploads = [];
+    this.pendingUploads = new Set<Promise<void>>();
   }
 
   info(message: string, context?: string): void {
@@ -37,7 +37,7 @@ export class StorageLogger extends AbstractLogger {
   }
 
   close(): Promise<void> {
-    return Promise.all(this.listPendingUploads).then(() => {
+    return Promise.all(this.pendingUploads).then(() => {
       return this.storage.upload(this.logs);
     });
   }
@@ -52,7 +52,7 @@ export class StorageLogger extends AbstractLogger {
     if (next) {
       const { uploadPromise, resolveUpload } = this.createUploadPromise();
 
-      this.listPendingUploads.push(uploadPromise);
+      this.pendingUploads.add(uploadPromise);
       this.storage.upload(next).then(resolveUpload);
     }
   }

@@ -136,7 +136,7 @@ describe("StorageLogger", () => {
       .catch(done);
   }, 10000);
 
-  it.only("close consider not finished multiple uploads as they might take longer", (done) => {
+  it("close consider not finished multiple uploads as they might take longer", (done) => {
     let counterUploads = 0;
 
     const calcTimeout = () => {
