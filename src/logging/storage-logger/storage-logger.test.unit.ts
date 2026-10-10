@@ -84,4 +84,58 @@ describe("StorageLogger", () => {
       })
       .catch(done);
   });
+
+  it("close consider not finished uploads as they might take longer", (done) => {
+    let counterUploads = 0;
+
+    const calcTimeout = () => {
+      let timeout: number;
+      if (counterUploads === 0) {
+        timeout = 1000;
+      } else {
+        timeout = 10;
+      }
+      counterUploads++;
+      return timeout;
+    };
+
+    const actualBatches: LogEntry[][] = [];
+
+    const storageLogger = new StorageLogger(
+      "appName",
+      {
+        upload: (data) => {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              actualBatches.push(data);
+              resolve();
+            }, calcTimeout());
+          });
+        },
+      },
+      { batch: { threshold: 3 } },
+    );
+
+    storageLogger.info("info message", "context");
+    storageLogger.warn("warn message", "context");
+    storageLogger.error("error message", "context");
+    storageLogger.debug("debug message", "context");
+
+    storageLogger
+      .close()
+      .then(() => {
+        try {
+          expect(actualBatches).toHaveLength(2);
+          expect(actualBatches[0]).toHaveLength(3);
+          expect(actualBatches[1]).toHaveLength(1);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      })
+      .catch(done);
+  }, 10000);
+
+  it.todo("multiple uploads with time overlaps");
+  it.todo("upload thorws error");
 });
