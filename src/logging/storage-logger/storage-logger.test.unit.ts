@@ -50,4 +50,38 @@ describe("StorageLogger", () => {
       .then(() => done())
       .catch(done);
   });
+
+  it("should upload log entries on batch threshold", (done) => {
+    const actualBatches: LogEntry[][] = [];
+
+    const storageLogger = new StorageLogger(
+      "appName",
+      {
+        upload: (data) => {
+          actualBatches.push(data);
+          return Promise.resolve();
+        },
+      },
+      { batch: { threshold: 3 } },
+    );
+
+    storageLogger.info("info message", "context");
+    storageLogger.warn("warn message", "context");
+    storageLogger.error("error message", "context");
+    storageLogger.debug("debug message", "context");
+
+    storageLogger
+      .close()
+      .then(() => {
+        try {
+          expect(actualBatches).toHaveLength(2);
+          expect(actualBatches[0]).toHaveLength(3);
+          expect(actualBatches[1]).toHaveLength(1);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      })
+      .catch(done);
+  });
 });

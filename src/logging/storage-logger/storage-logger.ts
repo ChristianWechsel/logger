@@ -11,25 +11,37 @@ export class StorageLogger extends AbstractLogger {
   constructor(
     appName: string,
     private storage: IStorage,
+    private options: { batch: { threshold: number } } = {
+      batch: { threshold: 50 },
+    },
   ) {
     super(appName);
     this.logs = [];
+    this.options;
   }
 
   info(message: string, context?: string): void {
-    this.logs.push(this.createLogEntry("info", message, context));
+    this.addLogEntry(this.createLogEntry("info", message, context));
   }
   warn(message: string, context?: string): void {
-    this.logs.push(this.createLogEntry("warn", message, context));
+    this.addLogEntry(this.createLogEntry("warn", message, context));
   }
   error(message: string, context?: string): void {
-    this.logs.push(this.createLogEntry("error", message, context));
+    this.addLogEntry(this.createLogEntry("error", message, context));
   }
   debug(message: string, context?: string): void {
-    this.logs.push(this.createLogEntry("debug", message, context));
+    this.addLogEntry(this.createLogEntry("debug", message, context));
   }
 
   close(): Promise<void> {
     return this.storage.upload(this.logs);
+  }
+
+  private addLogEntry(logEntry: LogEntry): void {
+    this.logs.push(logEntry);
+    if (this.logs.length === this.options.batch.threshold) {
+      this.storage.upload(this.logs);
+      this.logs = [];
+    }
   }
 }
