@@ -8,9 +8,7 @@ export interface IStorage {
 export class StorageLogger extends AbstractLogger {
   private logs: LogEntry[];
   private queueUploads: LogEntry[][];
-  private isUploading: Promise<void>;
-  private resolveIsUploading?: () => void;
-  private areUploadsPending: boolean;
+  private listPendingUploads: Promise<void>[];
 
   constructor(
     appName: string,
@@ -22,12 +20,7 @@ export class StorageLogger extends AbstractLogger {
     super(appName);
     this.logs = [];
     this.queueUploads = [];
-    this.isUploading = new Promise<void>((resolve) => {
-      this.resolveIsUploading = () => {
-        resolve();
-      };
-    });
-    this.areUploadsPending = false;
+    this.listPendingUploads = [];
   }
 
   info(message: string, context?: string): void {
@@ -44,12 +37,9 @@ export class StorageLogger extends AbstractLogger {
   }
 
   close(): Promise<void> {
-    if (this.areUploadsPending) {
-      return this.isUploading.then(() => {
-        return this.storage.upload(this.logs);
-      });
-    }
-    return this.storage.upload(this.logs);
+    return Promise.all(this.listPendingUploads).then(() => {
+      return this.storage.upload(this.logs);
+    });
   }
 
   private addLogEntry(logEntry: LogEntry): void {
@@ -60,11 +50,20 @@ export class StorageLogger extends AbstractLogger {
     }
     const next = this.queueUploads.shift();
     if (next) {
-      this.areUploadsPending = true;
-      this.storage.upload(next).then(() => {
-        this.areUploadsPending = false;
-        this.resolveIsUploading?.();
-      });
+      const { uploadPromise, resolveUpload } = this.createUploadPromise();
+
+      this.listPendingUploads.push(uploadPromise);
+      this.storage.upload(next).then(resolveUpload);
     }
+  }
+
+  private createUploadPromise() {
+    let resolveUpload: (value: void | PromiseLike<void>) => void = () => {};
+
+    const uploadPromise = new Promise<void>((resolve) => {
+      resolveUpload = resolve;
+    });
+
+    return { uploadPromise, resolveUpload };
   }
 }
